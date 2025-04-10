@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>To-Do PWA</title>
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" href="icon.png">
+  <style>
+    body {
+      background: linear-gradient(to bottom right, #f8fafc, #e0f2fe);
+    }
+    .fade-enter {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    .fade-enter-active {
+      transition: opacity 0.5s ease, transform 0.5s ease;
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .fade-exit {
+      opacity: 1;
+    }
+    .fade-exit-active {
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-start p-4">
+  <div class="w-full max-w-xl bg-white rounded-2xl shadow-xl p-6 transition-transform duration-500 ease-in-out hover:scale-[1.01]">
+    <h1 class="text-4xl font-extrabold mb-6 text-center text-blue-600 transition-opacity duration-700">📝 My To-Do List</h1>
+    <form id="taskForm" class="flex mb-6">
+      <input id="taskInput" type="text" class="flex-1 border-2 border-blue-300 rounded-l-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 transition duration-300" placeholder="Enter a task...">
+      <button class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-r-lg transition duration-300" type="submit">Add</button>
+    </form>
+    <ul id="taskList" class="space-y-4"></ul>
+  </div>
+
+  <script>
+    const dailyTasks = [
+      "✅ Day 1 Apne room ke kisi kone ko clean kar—external clarity → internal calm.",
+      "✅ Day 2 Kisi purani chhoti jeet ko yaad kar aur likh: 'Us waqt main kaise sochta tha?'",
+      "✅ Day 3 Kisi ek banda se khul ke baat kar (friend/family) bina 'theek hoon' bole.",
+      "✅ Day 4 Apne phone ka naam badal de: 'I AM ENOUGH' ya 'WARRIOR MODE ON'",
+      "✅ Day 5 Ek motivational song bja aur full volume pe dance kar—emotion ko body se nikaal.",
+      "✅ Day 6 Kisi chhoti help kar—bina bataye. Service heals shame.",
+      "✅ Day 7 Nature walk alone. Observe 3 things and write: 'Main is duniya ka part hoon.'"
+    ];
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').then(() => console.log('SW registered'));
+    }
+
+    if (Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    function showReminder() {
+      const today = new Date().getDate();
+      const dayIndex = (today - 1) % 7;
+      if (Notification.permission === 'granted') {
+        new Notification("🧘 Daily Task Reminder", {
+          body: dailyTasks[dayIndex],
+          icon: "icon.png"
+        });
+      }
+    }
+
+    const now = new Date();
+    const millisUntil8AM = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0, 0) - now;
+    if (millisUntil8AM > 0) {
+      setTimeout(showReminder, millisUntil8AM);
+    } else {
+      setTimeout(showReminder, 24 * 60 * 60 * 1000 + millisUntil8AM);
+    }
+
+    const taskList = document.getElementById('taskList');
+    const taskForm = document.getElementById('taskForm');
+    const taskInput = document.getElementById('taskInput');
+
+    let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+
+    if (tasks.length === 0) {
+      tasks = dailyTasks.map(task => ({ text: task, done: false }));
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
+
+    function saveTasks() {
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
+
+    function renderTasks() {
+      taskList.innerHTML = '';
+      tasks.forEach((task, index) => {
+        const li = document.createElement('li');
+        li.className = 'fade-enter flex items-center justify-between bg-blue-50 p-4 rounded-xl shadow-md hover:bg-blue-100 transition-all duration-500';
+        li.innerHTML = `
+          <div class="flex items-center">
+            <img src="icon.png" alt="task" class="w-8 h-8 mr-3">
+            <span class="${task.done ? 'line-through text-gray-400' : 'text-gray-800'} text-base transition-all duration-300">${task.text}</span>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="toggleTask(${index})" class="text-green-600 hover:text-green-800 text-xl transition-transform duration-300 hover:scale-110">✔️</button>
+            <button onclick="deleteTask(${index})" class="text-red-500 hover:text-red-700 text-xl transition-transform duration-300 hover:scale-110">🗑️</button>
+          </div>`;
+        taskList.appendChild(li);
+        requestAnimationFrame(() => li.classList.remove('fade-enter'));
+      });
+    }
+
+    function addTask(text) {
+      tasks.push({ text, done: false });
+      saveTasks();
+      renderTasks();
+    }
+
+    function toggleTask(index) {
+      tasks[index].done = !tasks[index].done;
+      saveTasks();
+      renderTasks();
+    }
+
+    function deleteTask(index) {
+      tasks.splice(index, 1);
+      saveTasks();
+      renderTasks();
+    }
+
+    taskForm.addEventListener('submit', e => {
+      e.preventDefault();
+      if (taskInput.value.trim()) {
+        addTask(taskInput.value.trim());
+        taskInput.value = '';
+      }
+    });
+
+    renderTasks();
+  </script>
+</body>
+</html>
